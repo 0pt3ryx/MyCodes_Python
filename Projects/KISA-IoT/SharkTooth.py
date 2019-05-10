@@ -8,16 +8,19 @@ Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)' \
 # Src_file_name = 'D:\\VM\\shared\\00_frag_udp.pcapng'
 # Src_file_name = 'D:\\VM\\shared\\ezviz_capture_normal_status.pcap'
 # Src_file_name = 'D:\\VM\\shared\\00_frag.pcapng'
-Src_file_name = 'D:\\VM\\shared\\refresh.pcap'
+# Src_file_name = 'D:\\VM\\shared\\refresh.pcap'
+Src_file_name = 'D:\\VM\\shared\\0510_arpWnormal.pcapng'
 Exported_file_name = 'D:\\VM\\shared\\features.csv'
 Packet_list = list()
 Parsed_list = list()
 
 ETH_TYPE_IP = dpkt.ethernet.ETH_TYPE_IP
 ETH_TYPE_IP6 = dpkt.ethernet.ETH_TYPE_IP6
+ETH_TYPE_ARP = dpkt.ethernet.ETH_TYPE_ARP
 IP_PROTO_TCP = dpkt.ip.IP_PROTO_TCP
 IP_PROTO_UDP = dpkt.ip.IP_PROTO_UDP
 IP_PROTO_ICMP = dpkt.ip.IP_PROTO_ICMP
+IP_PROTO_ICMP6 = dpkt.ip.IP_PROTO_ICMP6
 
 TH_FIN = 0x01
 TH_SYN = 0x02
@@ -32,6 +35,7 @@ TIME_WINDOW_SIZE_CNT = 100
 TIME_WINDOW_SIZE_SEC = 5
 DECIMAL_PRECISION = 6
 
+"""
 Feature_list = ['protocol_type', 'service', 'flag', 'src_bytes', 'dst_bytes', 'count', 'srv_count', 'serror_rate',
                 'srv_serror_rate', 'rerror_rate', 'srv_rerror_rate', 'same_srv_rate', 'diff_srv_rate', 'dst_host_count',
                 'dst_host_srv_count', 'dst_host_same_srv_rate', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
@@ -49,6 +53,7 @@ Field_symbol['service'] = ['aol', 'auth', 'bgp', 'courier', 'csnet_ns', 'ctf', '
                            'sql_net', 'ssh', 'sunrpc', 'supdup', 'systat', 'telnet', 'tftp_u', 'tim_i', 'time',
                            'urh_i', 'urp_i', 'uucp', 'uucp_path', 'vmnet', 'whois', 'X11', 'Z39_50']
 Field_symbol['flag'] = ['OTH', 'REJ', 'RSTO', 'RSTOS0', 'RSTR', 'S0', 'S1', 'S2', 'S3', 'SF', 'SH']
+"""
 
 Fragment_buffer = dict()
 
@@ -59,7 +64,6 @@ def load_and_read_pcap(file_name):
     if Src_file_name.find('.pcapng') >= 0:
         read_instance = dpkt.pcapng.Reader(src_file)
     elif Src_file_name.find('.pcap') >= 0:
-        print('pcap!!')
         read_instance = dpkt.pcap.Reader(src_file)
     else:
         raise NotImplementedError
@@ -85,6 +89,19 @@ def _convert_addr(addr_bytes, protocol='IPv4'):
         return result_addr[1:]
     else:
         raise Exception('@ Error\n\tInvalid parameter - convert_addr()')
+
+
+def _convert_mac_addr(mac_addr_bytes, mac_addr_length=6):
+    result_addr = ''
+
+    if type(mac_addr_bytes) is bytes and len(mac_addr_bytes) == mac_addr_length:
+        for addr_idx in range(mac_addr_length):
+            temp_str = ":%x" % mac_addr_bytes[addr_idx]
+            result_addr += temp_str
+    else:
+        raise Exception('@ Error\n\tInvalid parameter - conveert_mac_addr()')
+
+    return result_addr[1:]
 
 
 def _extract_protocol_type(ip_packet):
@@ -140,12 +157,6 @@ def _extract_transport_layer_data_len(ip_packet):
     return result
 
 
-"""
-def _get_past_2_seconds(curr_time):
-    pass
-"""
-
-
 def _reassemble_packet(frag_id):
     # 1. Sorting fragments by order
     Fragment_buffer[frag_id]['packets'].sort(key=lambda pkt: dpkt.ethernet.Ethernet(pkt).data.offset)
@@ -172,11 +183,12 @@ def _reassemble_packet(frag_id):
 
 
 # Return Value
-# True : Fragmentation
-# False: Not fragmentation or all fragments has arrived
+# False, False  : Not fragmentation
+# False, True   : All fragments has arrived
+# True, False   : Fragmentation
 def _is_fragment(packet, ip_level):
     if ip_level.df:     # Not fragmented
-        return False
+        return False, False
     else:               # Fragmented
         if not (ip_level.id in Fragment_buffer):    # If this is the first fragment
             Fragment_buffer[ip_level.id] = dict()
@@ -196,8 +208,14 @@ def _is_fragment(packet, ip_level):
         # If all of fragments has arrived
         if Fragment_buffer[ip_level.id]['acc_len'] >= Fragment_buffer[ip_level.id]['tot_len']:
             _reassemble_packet(ip_level.id)
-            return False
-        return True
+
+            assert Fragment_buffer[ip_level.id]['num_of_frags'] >= 1
+            if Fragment_buffer[ip_level.id]['num_of_frags'] == 1:
+                Fragment_buffer[ip_level.id]['num_of_frags'] = 0
+
+            return False, True
+
+        return True, False
 
 
 def _get_num_of_frags(ip_packet):
@@ -210,14 +228,49 @@ def _get_num_of_frags(ip_packet):
 def _is_valid_protocol(ether_frame):
     eth_type = ether_frame.type
 
-    if eth_type in [ETH_TYPE_IP, ETH_TYPE_IP6]:
+    if eth_type == ETH_TYPE_IP:
+        ip_level = ether_frame.data
+        if ip_level.p in [IP_PROTO_TCP, IP_PROTO_UDP, IP_PROTO_ICMP]:
+            return True
+        else:
+            return False
+    elif eth_type == ETH_TYPE_IP6:
+        ip_level = ether_frame.data
+        return False
+    elif eth_type == ETH_TYPE_ARP:
         return True
     else:
         return False
 
 
+def _extract_basic_features_arp(ether_frame, new_dict_features):
+    arp_level = ether_frame.data
+    converted_sender_ip = _convert_addr(arp_level.spa)
+    converted_target_ip = _convert_addr(arp_level.tpa)
+    if converted_sender_ip == converted_target_ip:
+        src_dst_same = 1    # True
+    else:
+        src_dst_same = 0    # False
+
+    new_dict_features['src_ip'] = converted_sender_ip
+    new_dict_features['dst_ip'] = converted_target_ip
+    new_dict_features['src_port'] = -1
+    new_dict_features['dst_port'] = -1
+
+    new_dict_features['protocol_type'] = 'ARP'
+    new_dict_features['tl_data_len'] = -1
+    new_dict_features['service'] = 'No_service'
+    new_dict_features['flag'] = 'No_flag'
+    new_dict_features['num_of_frags'] = 0
+    new_dict_features['src_dst_same'] = src_dst_same
+
+    new_dict_features['arp_op'] = arp_level.op
+    new_dict_features['s_mac_addr'] = _convert_mac_addr(arp_level.sha)
+    new_dict_features['t_mac_addr'] = _convert_mac_addr(arp_level.tha)
+
+
 def _extract_basic_features(read_instance):
-    global Packet_list, Parsed_list
+    global Packet_list, Parsed_list, Fragment_buffer
 
     packet_idx = 0
     # ts: timestamp
@@ -228,18 +281,47 @@ def _extract_basic_features(read_instance):
             ether_level = dpkt.ethernet.Ethernet(buf)
             ip_level = ether_level.data
         except Exception as e:
-            # print(e)
+            print(e)
             continue
 
         if _is_valid_protocol(ether_level) is False:
             continue
 
-        is_need_to_remove = _is_fragment(buf, ip_level)
+        # Need to clean code (ARP routine)
+        if ether_level.type == ETH_TYPE_ARP:
+            new_dict_features = dict()
+            new_dict_features['idx'] = packet_idx
+            new_dict_features['timestamp'] = ts
+
+            whole_packet = buf
+            _extract_basic_features_arp(ether_level, new_dict_features)
+
+            Parsed_list.append(new_dict_features)
+            Packet_list.append(whole_packet)
+            continue
+
+        # Non-ARP routine
+        if ether_level.type == ETH_TYPE_IP:
+            is_need_to_remove, is_reassembled = _is_fragment(buf, ip_level)
+        elif ether_level.type == ETH_TYPE_IP6:
+            is_need_to_remove = False
+            is_reassembled = False
+        else:
+            raise NotImplementedError
 
         if is_need_to_remove is True:
             continue
+        if is_reassembled is True:
+            whole_packet = Fragment_buffer[ip_level.id]['reassembled']
 
-        new_dict_features = dict()
+            ether_level = dpkt.ethernet.Ethernet(whole_packet)
+            ip_level = ether_level.data
+
+            num_of_frags = _get_num_of_frags(ip_level)
+            del Fragment_buffer[ip_level.id]
+        else:
+            whole_packet = buf
+            num_of_frags = 0
 
         if ether_level.type == ETH_TYPE_IP:
             converted_src_ip = _convert_addr(ip_level.src, 'IPv4')
@@ -255,28 +337,32 @@ def _extract_basic_features(read_instance):
 
         protocol_type = _extract_protocol_type(ip_level)
         service = _extract_service()
-        ctrl_flag = _extract_ctrl_flag(ip_level)
-        num_of_frags = _get_num_of_frags(ip_level)
-        if num_of_frags > 0:    # Fragmented
-            tl_data_len = Fragment_buffer[ip_level.id]['tot_len']
-            whole_packet = Fragment_buffer[ip_level.id]['reassembled']
-            del Fragment_buffer[ip_level.id]
-        else:                   # Not Fragmented
-            tl_data_len = _extract_transport_layer_data_len(ip_level)
-            whole_packet = buf
+        try:
+            ctrl_flag = _extract_ctrl_flag(ip_level)
+        except AttributeError as e:
+            print(packet_idx)
+            print(e)
+            continue
+
+        tl_data_len = _extract_transport_layer_data_len(ip_level)
+
         if converted_src_ip == converted_dst_ip:
             src_dst_same = 1    # True
         else:
             src_dst_same = 0    # False
 
-        # print(whole_packet)
-        # print(len(whole_packet))
+        new_dict_features = dict()
         new_dict_features['idx'] = packet_idx
         new_dict_features['timestamp'] = ts
         new_dict_features['src_ip'] = converted_src_ip
         new_dict_features['dst_ip'] = converted_dst_ip
-        new_dict_features['src_port'] = ip_level.data.sport
-        new_dict_features['dst_port'] = ip_level.data.dport
+
+        if protocol_type == 'TCP' or protocol_type == 'UDP':
+            new_dict_features['src_port'] = ip_level.data.sport
+            new_dict_features['dst_port'] = ip_level.data.dport
+        else:
+            new_dict_features['src_port'] = -1
+            new_dict_features['dst_port'] = -1
 
         new_dict_features['protocol_type'] = protocol_type
         new_dict_features['tl_data_len'] = tl_data_len
@@ -284,6 +370,10 @@ def _extract_basic_features(read_instance):
         new_dict_features['flag'] = ctrl_flag
         new_dict_features['num_of_frags'] = num_of_frags
         new_dict_features['src_dst_same'] = src_dst_same
+
+        new_dict_features['arp_op'] = -1
+        new_dict_features['s_mac_addr'] = -1
+        new_dict_features['t_mac_addr'] = -1
 
         Parsed_list.append(new_dict_features)
         Packet_list.append(whole_packet)
@@ -551,7 +641,7 @@ def _extract_advanced_features():
                     del time_window_sec_stat['backward'][head_dst_ip]
 
             # Move the head of the time window
-            head_ts = packet_parsed_in_time_window_sec[0][1]['timestamp']
+            head_ts = packet_parsed_in_time_window_sec[1][1]['timestamp']
             # Clean up the old head of the time window
             del packet_parsed_in_time_window_sec[0]
 
@@ -614,6 +704,7 @@ def _extract_advanced_features():
 def parse_file(read_instance):
     _extract_basic_features(read_instance)
     _extract_advanced_features()
+    pass
 
 
 def export_feature_data(parsed_list):
