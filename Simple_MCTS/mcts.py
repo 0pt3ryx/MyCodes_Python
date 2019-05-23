@@ -23,6 +23,7 @@ from math import *
 import random
 
 
+# 추상 클래스
 class GameState:
     """ A state of the game, i.e. the game board. These are the only functions which are
         absolutely necessary to implement UCT in any 2-player complete information deterministic
@@ -61,6 +62,7 @@ class GameState:
         pass
 
 
+# Nim 게임 state(보드판) 클래스
 class NimState:
     """ A state of the game Nim. In Nim, players alternately take 1,2 or 3 chips with the
         winner being the player to take the last chip.
@@ -107,6 +109,7 @@ class NimState:
         return s
 
 
+# Tic Tac Toe 게임 state(보드판) 클래스
 class OXOState:
     """ A state of the game, i.e. the game board.
         Squares in the board are in this arrangement
@@ -163,6 +166,7 @@ class OXOState:
         return s
 
 
+# Nim 게임 state(보드판) 클래스
 class OthelloState:
     """ A state of the game of Othello, i.e. the game board.
         The board is a 2D array where 0 = empty (.), 1 = player 1 (X), 2 = player 2 (O).
@@ -285,6 +289,7 @@ class OthelloState:
         return s
 
 
+# MCTS 노드 클래스
 class Node:
     """ A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
         Crashes if state not specified.
@@ -346,6 +351,7 @@ class Node:
         return s
 
 
+# UCT 알고리즘 (one of selection algorithms)
 def uct(root_state, itermax, verbose=False):
     """ Conduct a UCT search for itermax iterations starting from rootstate.
         Return the best move from the rootstate.
@@ -357,22 +363,23 @@ def uct(root_state, itermax, verbose=False):
         node = rootnode
         state = root_state.clone()
 
-        # Select
+        # Select    (해당 node의 모든 child node를 방문했을 때 수행됨)
         while node.untriedMoves == [] and node.childNodes != []:  # node is fully expanded and non-terminal
             node = node.uct_select_child()
             state.do_move(node.move)
 
-        # Expand
-        if node.untriedMoves:  # if we can expand (i.e. state/node is non-terminal)
+        # Expand    (해당 node의 child node 중에서 한 번도 방문되지 않은 node가 있을 때 수행됨)
+        if node.untriedMoves != []:  # if we can expand (i.e. state/node is non-terminal)
             m = random.choice(node.untriedMoves)
             state.do_move(m)
             node = node.add_child(m, state)  # add child and descend tree
 
         # Rollout - this can often be made orders of magnitude quicker using a state.GetRandomMove() function
-        while state.get_moves():  # while state is non-terminal
+        #           (랜덤한 게임을 수행함)
+        while state.get_moves() != []:  # while state is non-terminal
             state.do_move(random.choice(state.get_moves()))
 
-        # Backpropagate
+        # Backpropagate     (Rollout에서 수행한 게임의 결과를 상위 node로 전달함)
         while node is not None:  # backpropagate from the expanded node and work back to the root node
             node.update(state.get_result(
                 node.playerJustMoved))  # state is terminal. Update node with result from POV of node.playerJustMoved
@@ -387,18 +394,22 @@ def uct(root_state, itermax, verbose=False):
     return sorted(rootnode.childNodes, key=lambda c: c.visits)[-1].move  # return the move that was most visited
 
 
+# 게임 플레이
 def uct_play_game():
     """ Play a sample game between two UCT players where each player gets a different number
         of UCT iterations (= simulations = tree nodes).
     """
+    
+    # 아래 state를 선택하여 게임을 변경할 수 있음 
     # state = OthelloState(4) # uncomment to play Othello on a square board of the given size
     state = OXOState()  # uncomment to play OXO
     # state = NimState(15)  # uncomment to play Nim with the given number of starting chips
+
     while state.get_moves():
         print(str(state))
-        if state.playerJustMoved == 1:
+        if state.playerJustMoved == 1:  # Player2가 둘 차례일 때
             m = uct(root_state=state, itermax=1000, verbose=True)  # play with values for itermax and verbose = True
-        else:
+        else:                           # Player1이 둘 차례일 때
             m = uct(root_state=state, itermax=100, verbose=True)
         print("Best Move: " + str(m) + '\n')
         state.do_move(m)
