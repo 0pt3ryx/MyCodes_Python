@@ -9,8 +9,12 @@ Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)' \
 # Src_file_name = 'D:\\VM\\shared\\ezviz_capture_normal_status.pcap'
 # Src_file_name = 'D:\\VM\\shared\\00_frag.pcapng'
 # Src_file_name = 'D:\\VM\\shared\\refresh.pcap'
-Src_file_name = 'D:\\VM\\shared\\0510_arpWnormal.pcapng'
-Exported_file_name = 'D:\\VM\\shared\\features.csv'
+# Src_file_name = 'D:\\VM\\shared\\0510_arpWnormal.pcapng'
+Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
+                '네트워크패킷수집\\ezviz_traffic_sample\\Benign\\ezviz_benign_traffic-dec.pcap'
+# Exported_file_name = 'D:\\VM\\shared\\features.csv'
+Exported_file_name = 'D:\\tasks\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
+                     '네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\features.csv'
 Packet_list = list()
 Parsed_list = list()
 
@@ -34,6 +38,8 @@ TH_CWR = 0x80
 TIME_WINDOW_SIZE_CNT = 100
 TIME_WINDOW_SIZE_SEC = 5
 DECIMAL_PRECISION = 6
+
+Packet_idx = 0
 
 """
 Feature_list = ['protocol_type', 'service', 'flag', 'src_bytes', 'dst_bytes', 'count', 'srv_count', 'serror_rate',
@@ -198,7 +204,11 @@ def _is_fragment(packet, ip_level):
             Fragment_buffer[ip_level.id]['num_of_frags'] = 0
 
         if ip_level.mf == 0:    # If this is the last fragmentation
-            assert ip_level.len - ip_level.hl * 4 == ip_level.data.__len__()
+            try:
+                assert ip_level.len - ip_level.hl * 4 == ip_level.data.__len__()
+            except AssertionError:
+                print(Packet_idx)
+                print('Last fragmentation has arrived but has an exception.')
             Fragment_buffer[ip_level.id]['tot_len'] = ip_level.offset + ip_level.len - ip_level.hl * 4
 
         Fragment_buffer[ip_level.id]['packets'].append(packet)
@@ -230,10 +240,24 @@ def _is_valid_protocol(ether_frame):
 
     if eth_type == ETH_TYPE_IP:
         ip_level = ether_frame.data
-        if ip_level.p in [IP_PROTO_TCP, IP_PROTO_UDP, IP_PROTO_ICMP]:
-            return True
-        else:
+        try:
+            assert ip_level.__len__() >= 20 and hex(bytes(ip_level)[0] >> 4) == hex(0x4)
+        except AssertionError:
+            print(Packet_idx)
+            # print(hex(bytes(ip_level)[0] >> 4))
+            print('Invalid IP header')
             return False
+        try:
+            if ip_level.p in [IP_PROTO_TCP, IP_PROTO_UDP, IP_PROTO_ICMP]:
+                return True
+            else:
+                return False
+        except AttributeError:
+            print(Packet_idx)
+            print(hex(ip_level[0]) == hex(0xa3))
+            # print(type(hex(0xa3)))
+            assert False
+
     elif eth_type == ETH_TYPE_IP6:
         ip_level = ether_frame.data
         return False
@@ -275,13 +299,14 @@ def _extract_basic_features_arp(ether_frame, new_dict_features):
 
 
 def _extract_basic_features(read_instance):
-    global Packet_list, Parsed_list, Fragment_buffer
+    global Packet_list, Parsed_list, Fragment_buffer, Packet_idx
 
     packet_idx = 0
     # ts: timestamp
     # buf: buffer
     for ts, buf in read_instance:
         packet_idx += 1
+        Packet_idx = packet_idx
         try:
             ether_level = dpkt.ethernet.Ethernet(buf)
             ip_level = ether_level.data
