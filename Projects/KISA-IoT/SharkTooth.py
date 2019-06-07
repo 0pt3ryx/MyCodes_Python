@@ -10,8 +10,12 @@ Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)' \
 # Src_file_name = 'D:\\VM\\shared\\00_frag.pcapng'
 # Src_file_name = 'D:\\VM\\shared\\refresh.pcap'
 # Src_file_name = 'D:\\VM\\shared\\0510_arpWnormal.pcapng'
+"""
 Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                 '네트워크패킷수집\\ezviz_traffic_sample\\Benign\\ezviz_benign_traffic-dec.pcap'
+"""
+Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
+                '네트워크패킷수집\\ezviz_traffic_sample\\190523_1_ezviz_SYNFlooding_total-dec.pcap'
 # Exported_file_name = 'D:\\VM\\shared\\features.csv'
 Exported_file_name = 'D:\\tasks\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                      '네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\features.csv'
@@ -194,6 +198,11 @@ def _reassemble_packet(frag_id):
 # True, False   : Fragmentation
 def _is_fragment(packet, ip_level):
     if ip_level.df:     # Not fragmented
+        if ip_level.mf or ip_level.offset > 0:
+            print(Packet_idx)
+            print('DF is set, but mf is also set')
+            return True, False
+
         return False, False
     else:               # Fragmented
         if not (ip_level.id in Fragment_buffer):    # If this is the first fragment
@@ -388,8 +397,12 @@ def _extract_basic_features(read_instance):
         new_dict_features['dst_ip'] = converted_dst_ip
 
         if protocol_type == 'TCP' or protocol_type == 'UDP':
-            new_dict_features['src_port'] = ip_level.data.sport
-            new_dict_features['dst_port'] = ip_level.data.dport
+            try:
+                new_dict_features['src_port'] = ip_level.data.sport
+                new_dict_features['dst_port'] = ip_level.data.dport
+            except:
+                print(Packet_idx)
+                assert False
         else:
             new_dict_features['src_port'] = -1
             new_dict_features['dst_port'] = -1
