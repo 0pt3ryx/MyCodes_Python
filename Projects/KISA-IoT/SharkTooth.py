@@ -457,7 +457,7 @@ def _extract_time_window_features(time_window_sec_stat, target_parsed):
         for dst_ip in time_window_sec_stat['forward'][target_src_ip]['dst_ips']:
             for src_port in time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts']:
                 if src_port == target_src_port:
-                    same_sip_sport_pkt_cnt = time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts']
+                    same_sip_sport_pkt_cnt += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts']
                 same_sip_pkt_cnt += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts']
                 same_sip_src_bytes += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes']
                 same_sip_num_icmps += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps']
@@ -474,7 +474,7 @@ def _extract_time_window_features(time_window_sec_stat, target_parsed):
             try:
                 for dst_port in time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts']:
                     if dst_port == target_dst_port:
-                        same_dip_dport_pkt_cnt = time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_pkts']
+                        same_dip_dport_pkt_cnt += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_pkts']
                     same_dip_pkt_cnt += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_pkts']
                     same_dip_dst_bytes += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['tot_bytes']
                     same_dip_num_icmps += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_icmps']
@@ -893,4 +893,5 @@ Packet_parsed_list = zip(Packet_list, Parsed_list)
 for _, Parsed in Packet_parsed_list:
     print(Parsed)
 """
+
 export_feature_data(Parsed_list)
