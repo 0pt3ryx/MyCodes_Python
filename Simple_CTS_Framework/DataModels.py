@@ -147,7 +147,20 @@ class Vulnerability:
 
 
 class NetworkTopology:
-    pass
+    def __init__(self, nodes, edges):
+        if self._is_valid_types(nodes, edges) is False:
+            assert False
+        self.nodes = nodes
+        self.edges = edges
+
+    def _is_valid_types(self, nodes, edges):
+        for node in nodes:
+            if isinstance(node, Node) is False:
+                return False
+        for edge in edges:
+            if isinstance(edge, Edge) is False:
+                return False
+        return True
 
 
 class Technique:

@@ -7,7 +7,7 @@ class Agent(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _get_current_state(self):
+    def _get_current_state(self, network_topology, file_list, goal, techniques):
         pass
 
     @abstractmethod
@@ -15,67 +15,93 @@ class Agent(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _do_planning(self):
+    def _do_planning(self, technique_set):
         pass
 
     @abstractmethod
-    def _use_technique(self):
+    def _use_technique(self, technique):
         pass
 
     @abstractmethod
-    def _update_state(self):
+    def _update_state(self, effect):
         pass
 
     @abstractmethod
-    def run(self):
+    def run(self, network_topology, file_list, goal, techniques):
         pass
 
 
 class RedAgent(Agent):
     network_topology = None
     file_list = None
+    goal = None
+    techniques = None
 
-    def __init__(self, network_topology=None, file_list=None):
+    def __init__(self):
         super().__init__()
-        self.network_topology = network_topology
-        self.file_list = file_list
 
-    def _get_current_state(self):
-        pass
+    def _get_current_state(self, network_topology, file_list, goal, techniques):
+        RedAgent.network_topology = network_topology
+        RedAgent.file_list = file_list
+        RedAgent.goal = goal
+        RedAgent.techniques = techniques
+
+    def _is_goal_achieved(self):
+        return True
 
     def _determine_available_techniques(self):
+        return []
+
+    def _do_planning(self, technique_set):
+        return []
+
+    def _use_technique(self, technique):
+        return None, None
+
+    def _update_state(self, effect):
         pass
 
-    def _do_planning(self):
-        pass
+    def run(self, network_topology, file_list, goal, techniques):
+        self._get_current_state(network_topology, file_list, goal, techniques)
 
-    def _use_technique(self):
-        pass
+        while self._is_goal_achieved() is False:
+            techniques_set = self._determine_available_techniques()
 
-    def _update_state(self):
-        pass
+            if len(techniques_set) == 0:
+                return
 
-    def run(self):
+            technique_list = self._do_planning(techniques_set)
+            for technique in technique_list:
+                result, effect = self._use_technique(technique)
+                self._update_state(effect)
+
+                if result is False:
+                    continue
+                else:
+                    break
+
+    # 시스템에 접근
+    def _access_system(self):
         pass
 
 
 class BlueAgent(Agent):
-    def _get_current_state(self):
+    def _get_current_state(self, network_topology, file_list, goal, techniques):
         pass
 
     def _determine_available_techniques(self):
         pass
 
-    def _do_planning(self):
+    def _do_planning(self, technique_set):
         pass
 
-    def _use_technique(self):
+    def _use_technique(self, technique):
         pass
 
-    def _update_state(self):
+    def _update_state(self, effect):
         pass
 
-    def run(self):
+    def run(self, network_topology, file_list, goal, techniques):
         pass
 
 
@@ -87,11 +113,25 @@ if __name__ == "__main__":
         edge1 = Edge(node1, node2, [Port(23)])
         print(edge1)
 
+        test_network_topology = NetworkTopology([node1, node2], [edge1])
+        return test_network_topology
 
-    make_test_topology()
+
+    def make_test_file_list():
+        file1 = File('test_file1', 'D:\\path1', 'exe')
+        file2 = File('test_file2', 'D:\\path2', 'exe')
+
+        return [file1, file2]
+
+
+    network_topology = make_test_topology()
+    # print(network_topology.nodes)
+
+    file_list = make_test_file_list()
 
     agent1 = RedAgent()
-    print(agent1.network_topology)
+    print(RedAgent.network_topology)
+    agent1.run(network_topology, file_list, None, None)
 
     agent2 = RedAgent()
-    print(agent2.network_topology)
+    print(RedAgent.network_topology)

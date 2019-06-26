@@ -1,0 +1,21 @@
+{
+	"files": [
+		{
+			"file_name": "hello1.exe",
+			"file_path": "D:\\test1",
+			"file_type": "exe"
+		}
+	],
+
+	"techniques": [
+		{
+			"id": "RT1",
+			"use_team": "Red",
+			"score": 100,
+			"preconditions": {"os": "Linux"},
+			"commands": "ls -al",
+			"success_conditions": {"agent_file": "hello.txt"},
+			"effect": {"todo": "Todo..."}
+		}
+	]
+}
