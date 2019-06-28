@@ -1,5 +1,6 @@
 from abc import *
 from DataModels import *
+import asyncio, telnetlib3
 
 
 class Agent(metaclass=ABCMeta):
@@ -84,6 +85,22 @@ class RedAgent(Agent):
     def _access_system(self):
         pass
 
+    @asyncio.coroutine
+    def _shell(reader, writer):
+        outp = yield from reader.read(1024)
+        print(outp, flush=True)
+
+        # EOF
+        print()
+
+    # Error
+    @asyncio.coroutine
+    def _access_through_telnet(self, node):
+        loop = asyncio.get_event_loop()
+        coro = telnetlib3.open_connection(node.ip_addr, 23, shell=self._shell)
+        reader, writer = loop.run_until_complete(coro)
+        loop.run_until_complete(writer.protocol.waiter_closed)
+
 
 class BlueAgent(Agent):
     def _get_current_state(self, network_topology, file_list, goal, techniques):
@@ -133,5 +150,9 @@ if __name__ == "__main__":
     print(RedAgent.network_topology)
     agent1.run(network_topology, file_list, None, None)
 
-    agent2 = RedAgent()
-    print(RedAgent.network_topology)
+    first_node = network_topology.nodes[0]
+    # print(first_node.ip_addr)
+    # agent1._access_through_telnet(first_node)
+
+    # agent2 = RedAgent()
+    # print(RedAgent.network_topology)
