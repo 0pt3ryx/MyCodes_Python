@@ -694,11 +694,6 @@ def _extract_advanced_features():
             head_pkt_length = len(packet_parsed_in_time_window_sec[0][0])
 
             # Clean up Source info and Destination info from stat
-            """
-            time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port] -= 1
-            if time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port] <= 0:
-                del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]
-            """
             time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_pkts'] -= 1
             if time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_pkts'] <= 0:
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_pkts']
@@ -711,11 +706,6 @@ def _extract_advanced_features():
                     time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_icmps'] -= 1
                 assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_icmps'] >= 0
 
-            """
-            time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port] -= 1
-            if time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port] <= 0:
-                del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]
-            """
             time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts'] -= 1
             if time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts'] <= 0:
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts']
@@ -747,12 +737,6 @@ def _extract_advanced_features():
                 del time_window_sec_stat['forward'][head_src_ip]['ports']
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips']
                 del time_window_sec_stat['forward'][head_src_ip]
-
-                """
-                time_window_sec_stat['backward'][head_dst_ip].remove(head_src_ip)
-                if len(time_window_sec_stat['backward'][head_dst_ip]) == 0:
-                    del time_window_sec_stat['backward'][head_dst_ip]
-                """
                 pass
 
             # Move the head of the time window
@@ -770,7 +754,6 @@ def _extract_advanced_features():
         if src_ip not in time_window_sec_stat['forward']:
             time_window_sec_stat['forward'][src_ip] = dict()
             time_window_sec_stat['forward'][src_ip]['ports'] = dict()
-            # time_window_sec_stat['forward'][src_ip]['ports'][src_port] = 1
             time_window_sec_stat['forward'][src_ip]['ports'][src_port] = set()
             time_window_sec_stat['forward'][src_ip]['ports'][src_port].add(dst_ip)
 
@@ -778,7 +761,6 @@ def _extract_advanced_features():
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip] = dict()
 
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'] = dict()
-            # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = 1
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = dict()
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts'] = 1
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes'] = pkt_length
@@ -788,7 +770,6 @@ def _extract_advanced_features():
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 0
 
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'] = dict()
-            # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = 1
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = dict()
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_pkts'] = 1
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['tot_bytes'] = pkt_length
@@ -806,7 +787,6 @@ def _extract_advanced_features():
             if dst_ip not in time_window_sec_stat['forward'][src_ip]['dst_ips']:
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip] = dict()
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'] = dict()
-                # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = 1
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = dict()
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts'] = 1
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes'] = pkt_length
@@ -816,7 +796,6 @@ def _extract_advanced_features():
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 0
 
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'] = dict()
-                # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = 1
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = dict()
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_pkts'] = 1
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['tot_bytes'] = pkt_length
@@ -826,7 +805,6 @@ def _extract_advanced_features():
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 0
             else:
                 if dst_port not in time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts']:
-                    # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = dict()
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_pkts'] = 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['tot_bytes'] = pkt_length
@@ -835,14 +813,12 @@ def _extract_advanced_features():
                     else:
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 0
                 else:
-                    # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] += 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_pkts'] += 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['tot_bytes'] += pkt_length
                     if protocol_type == 'ICMP':
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] += 1
 
                 if src_port not in time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts']:
-                    # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = dict()
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts'] = 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes'] = pkt_length
@@ -851,7 +827,6 @@ def _extract_advanced_features():
                     else:
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 0
                 else:
-                    # time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] += 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts'] += 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes'] += pkt_length
                     if protocol_type == 'ICMP':
