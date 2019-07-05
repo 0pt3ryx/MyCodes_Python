@@ -110,8 +110,10 @@ class Edge:
 
 
 class Credential:
-    def __init__(self):
-        pass
+    def __init__(self, user_name, password, admin=False):
+        self.user_name = user_name
+        self.password = password
+        self.admin = admin
 
 
 class File:
@@ -164,8 +166,22 @@ class NetworkTopology:
 
 
 class Technique:
-    def __init__(self):
-        pass
+    def __init__(self, id, use_team, score, preconditions, commands, success_condition, effect):
+        # TODO - Check validation
+        self.id = id
+        self.use_team = use_team
+        self.score = score
+        self.preconditions = preconditions
+        self.commands = commands
+        self.success_condition = success_condition
+        self.effect = effect
+
+    def is_success(self, printed_string):
+        # TODO
+        if self.success_condition in printed_string:
+            return True
+        else:
+            return False
 
 
 if __name__ == "__main__":

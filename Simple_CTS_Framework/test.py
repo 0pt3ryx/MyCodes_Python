@@ -1,8 +1,7 @@
 import asyncio, telnetlib3
 
 
-@asyncio.coroutine
-def shell(reader, writer):
+async def shell(reader, writer):
     """
     while True:
         # read stream until '?' mark is found
@@ -17,8 +16,24 @@ def shell(reader, writer):
         # display all server output
         print(outp, flush=True)
     """
-    outp = yield from reader.read(1024)
-    print(outp, flush=True)
+    outp = await reader.read(1024)
+    print(outp, flush=False)
+
+    writer.write('testuser\n')
+    outp = await reader.read(1024)
+    print(outp, flush=False)
+
+    await asyncio.sleep(3)
+    writer.write('test1234\n')
+    #outp = await reader.read(1024)
+    #print(outp, flush=False)
+
+    await asyncio.sleep(3)
+    writer.write('ls -al\n')
+    await asyncio.sleep(3)
+    outp = await reader.read(4096)
+    # print(len(outp))
+    print(outp, flush=False)
 
     # EOF
     print()

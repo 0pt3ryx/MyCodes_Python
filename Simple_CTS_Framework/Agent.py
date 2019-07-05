@@ -37,6 +37,7 @@ class RedAgent(Agent):
     file_list = None
     goal = None
     techniques = None
+    sleep_tick = 2
 
     def __init__(self):
         super().__init__()
@@ -57,6 +58,8 @@ class RedAgent(Agent):
         return []
 
     def _use_technique(self, technique):
+        # Try
+
         return None, None
 
     def _update_state(self, effect):
@@ -68,6 +71,7 @@ class RedAgent(Agent):
         while self._is_goal_achieved() is False:
             techniques_set = self._determine_available_techniques()
 
+            # If there is no available technique
             if len(techniques_set) == 0:
                 return
 
@@ -85,21 +89,28 @@ class RedAgent(Agent):
     def _access_system(self):
         pass
 
-    @asyncio.coroutine
-    def _shell(reader, writer):
-        outp = yield from reader.read(1024)
+    async def _telnet_shell(self, reader, writer):
+        user_name = self.network_topology.nodes[0].credentials[0].user_name
+        password = self.network_topology.nodes[0].credentials[0].password
+
+        outp = await reader.read(1024)
+        print(outp, flush=True)
+
+        writer.write(user_name + '\n')
+        await asyncio.sleep(2)
+        writer.write(password + '\n')
+        await asyncio.sleep(2)
+        writer.write('cd root' + '\n' + 'ls -al' + '\n')
+        await asyncio.sleep(2)
+        outp = await reader.read(4096)
         print(outp, flush=True)
 
         # EOF
         print()
 
-    # Error
-    @asyncio.coroutine
-    def _access_through_telnet(self, node):
-        loop = asyncio.get_event_loop()
-        coro = telnetlib3.open_connection(node.ip_addr, 23, shell=self._shell)
-        reader, writer = loop.run_until_complete(coro)
-        loop.run_until_complete(writer.protocol.waiter_closed)
+    async def _access_through_telnet(self, node):
+        reader, writer = await telnetlib3.open_connection(node.ip_addr, 23, shell=self._telnet_shell)
+        await writer.protocol.waiter_closed
 
 
 class BlueAgent(Agent):
@@ -124,7 +135,9 @@ class BlueAgent(Agent):
 
 if __name__ == "__main__":
     def make_test_topology():
-        node1 = Node('test_kali', '192.168.61.129', OS('Linux'), [Port(23)])
+        node1 = Node('test_kali', '192.168.61.129', OS('Linux'),
+                     [Port(23)],
+                     [Credential('testuser', 'test1234', False)])
         node2 = Node('none_sys', 'xxx.xxx.xxx.xxx', OS('Linux'))
 
         edge1 = Edge(node1, node2, [Port(23)])
@@ -142,8 +155,6 @@ if __name__ == "__main__":
 
 
     network_topology = make_test_topology()
-    # print(network_topology.nodes)
-
     file_list = make_test_file_list()
 
     agent1 = RedAgent()
@@ -151,8 +162,6 @@ if __name__ == "__main__":
     agent1.run(network_topology, file_list, None, None)
 
     first_node = network_topology.nodes[0]
-    # print(first_node.ip_addr)
-    # agent1._access_through_telnet(first_node)
-
-    # agent2 = RedAgent()
-    # print(RedAgent.network_topology)
+    loop = asyncio.get_event_loop()
+    coro = agent1._access_through_telnet(first_node)
+    loop.run_until_complete(coro)
