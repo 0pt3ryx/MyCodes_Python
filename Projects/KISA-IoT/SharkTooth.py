@@ -14,11 +14,17 @@ Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)' \
 Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                 '네트워크패킷수집\\ezviz_traffic_sample\\Benign\\ezviz_benign_traffic-dec.pcap'
 """
+'''
 Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                 '네트워크패킷수집\\ezviz_traffic_sample\\190523_1_ezviz_SYNFlooding_total-dec.pcap'
+'''
+Src_file_name = './네트워크패킷수집\\ezviz_traffic_sample\\190523_1_ezviz_SYNFlooding_total-dec.pcap'
 # Exported_file_name = 'D:\\VM\\shared\\features.csv'
+'''
 Exported_file_name = 'D:\\tasks\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                      '네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\features.csv'
+'''
+Exported_file_name = './네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\features.csv'
 Packet_list = list()
 Parsed_list = list()
 
@@ -706,6 +712,7 @@ def _extract_advanced_features(): # window tree update & window 피처 뽑는 �
             head_src_port = packet_parsed_in_time_window_sec[0][1]['src_port']
             head_dst_port = packet_parsed_in_time_window_sec[0][1]['dst_port']
             head_protocol_type = packet_parsed_in_time_window_sec[0][1]['protocol_type']
+            head_flag_list = packet_parsed_in_time_window_sec[0][1]['flag']
             head_pkt_length = len(packet_parsed_in_time_window_sec[0][0])
 
             # Clean up Source info and Destination info from stat
@@ -722,8 +729,12 @@ def _extract_advanced_features(): # window tree update & window 피처 뽑는 �
                 if head_protocol_type == 'ICMP':
                     time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_icmps'] -= 1
                 assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_icmps'] >= 0
-                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_syn'] -= 1 # KUB
-                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_ack'] -= 1  # KUB
+                if 'SYN' in head_flag_list: # kub
+                    time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_syn'] -= 1
+                assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_syn'] >= 0
+                if 'ACK' in head_flag_list: # kub
+                    time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_ack'] -= 1
+                assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_ack'] >= 0
 
             time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts'] -= 1
             if time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts'] <= 0:
@@ -738,8 +749,12 @@ def _extract_advanced_features(): # window tree update & window 피처 뽑는 �
                 if head_protocol_type == 'ICMP':
                     time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_icmps'] -= 1
                 assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_icmps'] >= 0
-                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_syn'] -= 1 # kub
-                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_ack'] -= 1  # kub
+                if 'SYN' in head_flag_list: # kub
+                    time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_syn'] -= 1
+                assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_syn'] >= 0
+                if 'ACK' in head_flag_list: # kub
+                    time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_ack'] -= 1
+                assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_ack'] >= 0
 
             if len(time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts']) == 0 and \
                     len(time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts']) == 0:
@@ -772,7 +787,7 @@ def _extract_advanced_features(): # window tree update & window 피처 뽑는 �
         src_port = parsed['src_port']
         dst_port = parsed['dst_port']
         protocol_type = parsed['protocol_type']
-        flag_list = parsed['flag'] # kub
+        flag_list = parsed['flag']  # kub
         pkt_length = len(packet)
 
         if src_ip not in time_window_sec_stat['forward']:
@@ -881,8 +896,10 @@ def _extract_advanced_features(): # window tree update & window 피처 뽑는 �
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['tot_bytes'] += pkt_length
                     if protocol_type == 'ICMP':
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] += 1
-                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] += 1  # kub
-                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] += 1  # kub
+                    if 'SYN' in flag_list: # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] += 1
+                    if 'ACK' in flag_list: # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] += 1
 
                 if src_port not in time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts']:
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = dict()
@@ -905,8 +922,10 @@ def _extract_advanced_features(): # window tree update & window 피처 뽑는 �
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes'] += pkt_length
                     if protocol_type == 'ICMP':
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] += 1
-                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] += 1  # kub
-                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] += 1  # kub
+                    if 'SYN' in flag_list: # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] += 1
+                    if 'ACK' in flag_list: # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] += 1
 
         if dst_ip not in time_window_sec_stat['backward']:
             time_window_sec_stat['backward'][dst_ip] = set()
