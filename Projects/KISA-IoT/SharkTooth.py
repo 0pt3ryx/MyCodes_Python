@@ -377,7 +377,7 @@ def _extract_basic_features(read_instance):
         protocol_type = _extract_protocol_type(ip_level)
         service = _extract_service()
         try:
-            ctrl_flag = _extract_ctrl_flag(ip_level)
+            ctrl_flag = _extract_ctrl_flag(ip_level) # flag 뽑는 함수 호출 'SYN' 과 'ACK' 가 들어있음
         except AttributeError as e:
             print(packet_idx)
             print(e)
@@ -410,7 +410,7 @@ def _extract_basic_features(read_instance):
         new_dict_features['protocol_type'] = protocol_type
         new_dict_features['tl_data_len'] = tl_data_len
         new_dict_features['service'] = service
-        new_dict_features['flag'] = ctrl_flag
+        new_dict_features['flag'] = ctrl_flag # list형식이다.
         new_dict_features['num_of_frags'] = num_of_frags
         new_dict_features['src_dst_same'] = src_dst_same
 
@@ -432,7 +432,7 @@ def _extract_basic_features(read_instance):
     return
 
 
-def _extract_time_window_features(time_window_sec_stat, target_parsed):
+def _extract_time_window_features(time_window_sec_stat, target_parsed): # window 피처 뽑는 함수 (time_window_sec_stat : dict형식의 트리, target_parsed : dict형식의 피처)
     target_src_ip = target_parsed['src_ip']
     target_dst_ip = target_parsed['dst_ip']
     target_src_port = target_parsed['src_port']
@@ -450,17 +450,24 @@ def _extract_time_window_features(time_window_sec_stat, target_parsed):
 
     same_sip_src_bytes = 0
     same_dip_dst_bytes = 0
-    same_sip_num_icmps = 0
+    same_sip_num_icmps = 0 # - 지난 n초간 동일 src IP에서 보낸 패킷 중 ICMP 패킷의 **수**
     same_dip_num_icmps = 0
+
+    same_sip_num_syn = 0 # - 지난 n초간 동일 src IP에서 보낸 패킷 중 SYN 패킷의 **수**
+    same_dip_num_syn = 0
+    same_sip_num_ack = 0  # - 지난 n초간 동일 src IP에서 보낸 패킷 중 SYN와 ACK 패킷의 차이
+    same_dip_num_ack = 0
 
     if target_src_ip in time_window_sec_stat['forward']:
         for dst_ip in time_window_sec_stat['forward'][target_src_ip]['dst_ips']:
-            for src_port in time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts']:
+            for src_port in time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts']: #
                 if src_port == target_src_port:
                     same_sip_sport_pkt_cnt += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts']
                 same_sip_pkt_cnt += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts']
                 same_sip_src_bytes += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes']
                 same_sip_num_icmps += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps']
+                same_sip_num_syn += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] # KUB
+                same_sip_num_ack += time_window_sec_stat['forward'][target_src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] # KUB
         same_sip_pkt_dip_cnt = len(time_window_sec_stat['forward'][target_src_ip]['dst_ips'])
 
         if target_dst_ip in time_window_sec_stat['forward'][target_src_ip]['dst_ips']:
@@ -478,6 +485,8 @@ def _extract_time_window_features(time_window_sec_stat, target_parsed):
                     same_dip_pkt_cnt += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_pkts']
                     same_dip_dst_bytes += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['tot_bytes']
                     same_dip_num_icmps += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_icmps']
+                    same_dip_num_syn += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_syn'] # KUB
+                    same_dip_num_ack += time_window_sec_stat['forward'][src_ip]['dst_ips'][target_dst_ip]['dPorts'][dst_port]['num_ack']  # KUB
             except KeyError as e:
                 print(e)
                 print(time_window_sec_stat['forward'][src_ip]['dst_ips'])
@@ -500,12 +509,18 @@ def _extract_time_window_features(time_window_sec_stat, target_parsed):
     target_parsed['same_dip_dst_bytes'] = same_dip_dst_bytes
     if same_sip_pkt_cnt == 0:
         target_parsed['same_sip_icmp_ratio'] = 0
+        target_parsed['same_sip_syn_ratio'] = 0 # KUB
     else:
         target_parsed['same_sip_icmp_ratio'] = same_sip_num_icmps/same_sip_pkt_cnt
+        target_parsed['same_sip_syn_ratio'] = same_sip_num_syn/same_sip_pkt_cnt # KUB
     if same_dip_pkt_cnt == 0:
         target_parsed['same_dip_icmp_ratio'] = 0
+        target_parsed['same_dip_syn_ratio'] = 0 # KUB
     else:
         target_parsed['same_dip_icmp_ratio'] = same_dip_num_icmps/same_dip_pkt_cnt
+        target_parsed['same_dip_syn_ratio'] = same_dip_num_syn/same_dip_pkt_cnt # KUB
+    target_parsed['same_sip_syn_ack_diff_cnt'] = abs(same_sip_num_ack - same_sip_num_syn)
+    target_parsed['same_dip_syn_ack_diff_cnt'] = abs(same_dip_num_ack - same_dip_num_syn)
 
     return
 
@@ -670,7 +685,7 @@ def _extract_state_transition():
     pass
 
 
-def _extract_advanced_features():
+def _extract_advanced_features(): # window tree update & window 피처 뽑는 함수 호출
     packet_parsed_list = zip(Packet_list, Parsed_list)
     packet_parsed_in_time_window_sec = list()
 
@@ -679,8 +694,8 @@ def _extract_advanced_features():
                                                 # dict['forward'][IP]['dst_IP'][IP][dst_port] = int
     time_window_sec_stat['backward'] = dict()    # dict['backward'][IP] = [src_IP1, src_IP2, ...]
 
-    for packet, parsed in packet_parsed_list:
-        _extract_time_window_features(time_window_sec_stat, parsed)
+    for packet, parsed in packet_parsed_list: # 날것의 패킷이 packet, 그걸 쓰는 요소만 dict형식으로 저장한게 parsed
+        _extract_time_window_features(time_window_sec_stat, parsed) # window 피처 뽑는 함수 호출 OUT은 parsed라는 dict에 업데이트
         packet_parsed_in_time_window_sec.append((packet, parsed))
 
         head_ts = packet_parsed_in_time_window_sec[0][1]['timestamp']
@@ -699,24 +714,32 @@ def _extract_advanced_features():
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_pkts']
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['tot_bytes']
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_icmps']
+                del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_syn'] # KUB
+                del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_ack'] # KUB
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]
             else:
                 time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['tot_bytes'] -= head_pkt_length
                 if head_protocol_type == 'ICMP':
                     time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_icmps'] -= 1
                 assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_icmps'] >= 0
+                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_syn'] -= 1 # KUB
+                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts'][head_dst_port]['num_ack'] -= 1  # KUB
 
             time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts'] -= 1
             if time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts'] <= 0:
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_pkts']
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['tot_bytes']
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_icmps']
+                del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_syn'] # kub
+                del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_ack']  # kub
                 del time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]
             else:
                 time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['tot_bytes'] -= head_pkt_length
                 if head_protocol_type == 'ICMP':
                     time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_icmps'] -= 1
                 assert time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_icmps'] >= 0
+                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_syn'] -= 1 # kub
+                time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts'][head_src_port]['num_ack'] -= 1  # kub
 
             if len(time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['sPorts']) == 0 and \
                     len(time_window_sec_stat['forward'][head_src_ip]['dst_ips'][head_dst_ip]['dPorts']) == 0:
@@ -749,6 +772,7 @@ def _extract_advanced_features():
         src_port = parsed['src_port']
         dst_port = parsed['dst_port']
         protocol_type = parsed['protocol_type']
+        flag_list = parsed['flag'] # kub
         pkt_length = len(packet)
 
         if src_ip not in time_window_sec_stat['forward']:
@@ -768,6 +792,14 @@ def _extract_advanced_features():
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 1
             else:
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 0
+            if 'SYN' in flag_list: # kub
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] = 1
+            else:
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] = 0
+            if 'ACK' in flag_list: # kub
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] = 1
+            else:
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] = 0
 
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'] = dict()
             time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = dict()
@@ -777,6 +809,14 @@ def _extract_advanced_features():
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 1
             else:
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 0
+            if 'SYN' in flag_list: # kub
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] = 1
+            else:
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] = 0
+            if 'ACK' in flag_list: # kub
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] = 1
+            else:
+                time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] = 0
         else:
             if src_port not in time_window_sec_stat['forward'][src_ip]['ports']:
                 time_window_sec_stat['forward'][src_ip]['ports'][src_port] = set()
@@ -794,6 +834,14 @@ def _extract_advanced_features():
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 1
                 else:
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 0
+                if 'SYN' in flag_list:  # kub
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] = 1
+                else:
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] = 0
+                if 'ACK' in flag_list:  # kub
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] = 1
+                else:
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] = 0
 
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'] = dict()
                 time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = dict()
@@ -803,6 +851,14 @@ def _extract_advanced_features():
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 1
                 else:
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 0
+                if 'SYN' in flag_list:  # kub
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] = 1
+                else:
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] = 0
+                if 'ACK' in flag_list:  # kub
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] = 1
+                else:
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] = 0
             else:
                 if dst_port not in time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts']:
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port] = dict()
@@ -812,11 +868,21 @@ def _extract_advanced_features():
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 1
                     else:
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] = 0
+                    if 'SYN' in flag_list:  # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] = 1
+                    else:
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] = 0
+                    if 'ACK' in flag_list:  # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] = 1
+                    else:
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] = 0
                 else:
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_pkts'] += 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['tot_bytes'] += pkt_length
                     if protocol_type == 'ICMP':
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_icmps'] += 1
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] += 1  # kub
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] += 1  # kub
 
                 if src_port not in time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts']:
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port] = dict()
@@ -826,11 +892,21 @@ def _extract_advanced_features():
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 1
                     else:
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] = 0
+                    if 'SYN' in flag_list:  # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] = 1
+                    else:
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_syn'] = 0
+                    if 'ACK' in flag_list:  # kub
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] = 1
+                    else:
+                        time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_ack'] = 0
                 else:
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_pkts'] += 1
                     time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['tot_bytes'] += pkt_length
                     if protocol_type == 'ICMP':
                         time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['sPorts'][src_port]['num_icmps'] += 1
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_syn'] += 1  # kub
+                    time_window_sec_stat['forward'][src_ip]['dst_ips'][dst_ip]['dPorts'][dst_port]['num_ack'] += 1  # kub
 
         if dst_ip not in time_window_sec_stat['backward']:
             time_window_sec_stat['backward'][dst_ip] = set()
