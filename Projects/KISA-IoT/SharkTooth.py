@@ -438,7 +438,8 @@ def _extract_basic_features(read_instance):
     return
 
 
-def _extract_time_window_features(time_window_sec_stat, target_parsed): # window 피처 뽑는 함수 (time_window_sec_stat : dict형식의 트리, target_parsed : dict형식의 피처)
+# window 피처 뽑는 함수 (time_window_sec_stat : dict형식의 트리, target_parsed : dict형식의 피처)
+def _extract_time_window_features(time_window_sec_stat, target_parsed):
     target_src_ip = target_parsed['src_ip']
     target_dst_ip = target_parsed['dst_ip']
     target_src_port = target_parsed['src_port']
