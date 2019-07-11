@@ -14,17 +14,14 @@ Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)' \
 Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                 '네트워크패킷수집\\ezviz_traffic_sample\\Benign\\ezviz_benign_traffic-dec.pcap'
 """
-'''
+
 Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                 '네트워크패킷수집\\ezviz_traffic_sample\\190523_1_ezviz_SYNFlooding_total-dec.pcap'
-'''
-Src_file_name = './네트워크패킷수집\\ezviz_traffic_sample\\190523_1_ezviz_SYNFlooding_total-dec.pcap'
+
 # Exported_file_name = 'D:\\VM\\shared\\features.csv'
-'''
+
 Exported_file_name = 'D:\\tasks\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
                      '네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\features.csv'
-'''
-Exported_file_name = './네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\features.csv'
 Packet_list = list()
 Parsed_list = list()
 
