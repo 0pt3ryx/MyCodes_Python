@@ -16,12 +16,12 @@ Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
 """
 
 Src_file_name = 'D:\\tasks\\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
-                '네트워크패킷수집\\ezviz_traffic_sample\\190523_1_ezviz_SYNFlooding_total-dec.pcap'
+                '네트워크패킷수집\\ezviz_traffic_sample\\190711_3_NUGU_Scanning_HOST+PORT_total-dec.pcap'
 
 # Exported_file_name = 'D:\\VM\\shared\\features.csv'
 
 Exported_file_name = 'D:\\tasks\Projects\\KISA IoT 2년차 (2019년 1월 ~)\\' \
-                     '네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\features.csv'
+                     '네트워크패킷수집\\ezviz_traffic_sample\\extracted_features\\190711_3_NUGU_Scanning_HOST+PORT_total-dec.pcap'
 Packet_list = list()
 Parsed_list = list()
 
@@ -254,6 +254,7 @@ def _is_valid_protocol(ether_frame):
         ip_level = ether_frame.data
         try:
             assert ip_level.__len__() >= 20 and hex(bytes(ip_level)[0] >> 4) == hex(0x4)
+            assert isinstance(ip_level, dpkt.ip.IP)
         except AssertionError:
             print(Packet_idx)
             # print(hex(bytes(ip_level)[0] >> 4))
@@ -297,6 +298,7 @@ def _extract_basic_features_arp(ether_frame, new_dict_features):
     new_dict_features['tl_data_len'] = -1
     new_dict_features['service'] = 'No_service'
     new_dict_features['flag'] = 'No_flag'
+    new_dict_features['tcp_win_size'] = -1
     new_dict_features['num_of_frags'] = 0
     new_dict_features['src_dst_same'] = src_dst_same
 
@@ -334,6 +336,8 @@ def _extract_basic_features(read_instance):
             new_dict_features = dict()
             new_dict_features['idx'] = packet_idx
             new_dict_features['timestamp'] = ts
+            new_dict_features['dst_ether'] = _convert_mac_addr(ether_level.dst, 6)
+            new_dict_features['src_ether'] = _convert_mac_addr(ether_level.src, 6)
 
             whole_packet = buf
             _extract_basic_features_arp(ether_level, new_dict_features)
@@ -396,6 +400,8 @@ def _extract_basic_features(read_instance):
         new_dict_features = dict()
         new_dict_features['idx'] = packet_idx
         new_dict_features['timestamp'] = ts
+        new_dict_features['dst_ether'] = _convert_mac_addr(ether_level.dst, 6)
+        new_dict_features['src_ether'] = _convert_mac_addr(ether_level.src, 6)
         new_dict_features['src_ip'] = converted_src_ip
         new_dict_features['dst_ip'] = converted_dst_ip
 
@@ -414,6 +420,12 @@ def _extract_basic_features(read_instance):
         new_dict_features['tl_data_len'] = tl_data_len
         new_dict_features['service'] = service
         new_dict_features['flag'] = ctrl_flag # list형식이다.
+
+        if protocol_type == 'TCP':
+            new_dict_features['tcp_win_size'] = ip_level.data.win
+        else:
+            new_dict_features['tcp_win_size'] = -1
+
         new_dict_features['num_of_frags'] = num_of_frags
         new_dict_features['src_dst_same'] = src_dst_same
 
