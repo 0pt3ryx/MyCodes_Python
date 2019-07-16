@@ -42,7 +42,7 @@ def _load_src_file(src_file_path):
         for line in reader:
             label = _get_label(line)
             new_row = copy.deepcopy(line)
-            new_row['label'] = label
+            new_row['category'] = label
             result_list.append(new_row)
 
     return result_list
