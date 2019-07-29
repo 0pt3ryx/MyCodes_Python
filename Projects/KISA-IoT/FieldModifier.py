@@ -130,7 +130,6 @@ def modify_packets(new_base_timestamp):
         ip_level = ether_level.data
 
         original_src_mac = _convert_mac_addr_byte_to_str(ether_level.src)
-        print(original_src_mac)
         if original_src_mac in Field_conversion_table['src_mac']:
             new_src_mac = _convert_mac_addr_str_to_byte(Field_conversion_table['src_mac'][original_src_mac])
             ether_level.src = new_src_mac
